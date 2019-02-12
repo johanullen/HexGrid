@@ -357,14 +357,13 @@ class OutPropagation(HexGrid):
             l = [((ix, jx), self.sum_neighbours(ix, jx)) for (ix, jx), val in self.generator() if val > 0]
             l = [item for item in l if item[1] > 0]
             good = False
-            while(l):
-                l = sorted(l, key=lambda x: x[1])
-                node = l.pop(0)
+            for node in sorted(l, key=lambda x: x[1]):
                 self.grid[node[0][0]][node[0][1]] += 1
                 if not self.validate_local(*node[0]):
                     self.grid[node[0][0]][node[0][1]] -= 1
                 else:
                     good = True
+                    # break - want to remove node, but we want new values for the others
 
 
 # grid = [
@@ -377,4 +376,4 @@ class OutPropagation(HexGrid):
 # HexGrid.from_grid(grid).test()
 
 
-OutPropagation.from_order(27).set_all(0)().test()
+OutPropagation.from_order(29).set_all(0)().test()
