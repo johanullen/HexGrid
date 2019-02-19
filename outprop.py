@@ -59,7 +59,7 @@ class OutPropagation(HexGrid):
                         break
 
 
-OutPropagation.from_order(27).set_all(0)().visualize()
+OutPropagation.from_order(3).set_all(0)().visualize()
 
 # for n in range(3, 28):
 #     grid = OutPropagation.from_order(n).set_all(0)()
