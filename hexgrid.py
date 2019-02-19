@@ -452,7 +452,7 @@ grid = [(3, 2, 1, 3), (1, 6, 5, 4, 2), (3, 4, 7, 3, 2, 1), (0, 2, 1, 2, 1, 0, 0)
 # grid = [(4, 3, 4), (2, 1, 2, 1), (3, 4, 7, 3, 2), (1, 6, 5, 4), (3, 2, 1)]
 HexGrid.from_grid(grid).test()
 
-RandomChange.from_order(4)(tries=100).test()
+RandomChange.from_order(4)(tries=3000).test()
 
 # from itertools import chain as chain
 # from collections import Counter
