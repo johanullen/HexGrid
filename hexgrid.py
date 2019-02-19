@@ -118,6 +118,44 @@ class HexGrid:
             return False
         return True
 
+    def same_neighbour(self, ix, jx):
+        value = self.get(ix, jx)
+        if not value:
+            return False
+
+        def check_neigbour(i, j):
+            try:
+                if i >= 0 and j >= 0:
+                    return self.get(i, j) == value
+                else:
+                    return False
+            except IndexError:
+                return False
+        return True in self._apply_on_neighbours(ix, jx, check_neigbour)
+
+    def check_perfect(self, ix, jx):
+        if ix == 0 or ix == self.height:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                values = set(range(1, 5))
+            else:
+                values = set(range(1, 6))
+        else:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                values = set(range(1, 6))
+            else:
+                values = set(range(1, 8))
+        value = self.get(ix, jx)
+        values.discard(value)
+
+        def remove(i, j):
+            try:
+                if i >= 0 and j >= 0:
+                    values.discard(self.grid[i][j])
+            except IndexError:
+                pass
+        self._apply_on_neighbours(ix, jx, remove)
+        return not values
+
     def validate_local(self, ix, jx):
         valid = [self.validate_hex(ix, jx)]
         valid += self._apply_on_neighbours(ix, jx, self.validate_hex)
@@ -204,8 +242,15 @@ class HexGrid:
                 s += indent*(self.height-ix)
             else:
                 s += indent*(ix+1)
-            for value in row:
+            for jx, value in enumerate(row):
+                if not self.validate_hex(ix,  jx):
+                    s += '\033[1;31m'
+                elif self.same_neighbour(ix, jx):
+                    s += '\033[38;2;243;134;48m'
+                elif self.check_perfect(ix, jx):
+                    s += '\033[0;32m'
                 s += " %d" % value
+                s += '\033[0;0m'
             s += "\n"
         return s
 
@@ -318,6 +363,7 @@ class RandomChange(HexGrid):
 
     def __call__(self, *, start_value=1, random_changes=None, random_upgrades=None, tries=5):
         self.set_all(start_value)
+        # self.set_all(1).set(2, 2, 7)
         return self._random(random_changes, random_upgrades, tries)
 
 
@@ -366,14 +412,27 @@ class OutPropagation(HexGrid):
                     # break - want to remove node, but we want new values for the others
 
 
-# grid = [
-#     (4, 3, 2),
-#     (2, 1, 3, 1),
-#     (3, 1, 5, 2, 4),
-#     (2, 1, 4, 3),
-#     (2, 3, 1)
-# ]
-# HexGrid.from_grid(grid).test()
+grid = [
+    (4, 3, 2),
+    (2, 1, 3, 1),
+    (3, 1, 5, 2, 4),
+    (2, 1, 4, 3),
+    (2, 3, 1)
+]
+grid = [(4, 3, 4), (1, 2, 1, 2), (2, 3, 7, 4, 3), (4, 5, 6, 1), (1, 2, 3)]
+grid = [(3, 2, 1), (1, 6, 5, 4), (3, 4, 7, 3, 2), (2, 1, 2, 1), (0, 0, 0)]
+HexGrid.from_grid(grid).upsize(value=0).test()
+grid = [(3, 2, 1, 3), (1, 6, 5, 4, 2), (3, 4, 7, 3, 2, 1), (0, 2, 1, 2, 1, 0, 0), (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0), (0, 0, 0, 0)]
+# grid = [(4, 3, 4), (2, 1, 2, 1), (3, 4, 7, 3, 2), (1, 6, 5, 4), (3, 2, 1)]
+HexGrid.from_grid(grid).test()
+# RandomChange.from_order(3)(tries=1000).test()
 
+# from itertools import chain as chain
+# from collections import Counter
 
-OutPropagation.from_order(29).set_all(0)().test()
+# for n in range(3, 28):
+#     grid = OutPropagation.from_order(n).set_all(0)()
+#     # grid.test()
+#     grid = Counter(chain(*grid.grid))
+
+#     print(n, grid)
