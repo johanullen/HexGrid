@@ -139,14 +139,19 @@ class HexGrid:
                 return 7
 
     def check_perfect(self, ix, jx):
-        values = set(range(1, self.highest_possible(ix, jx)+1))
-        value = self.get(ix, jx)
-        values.discard(value)
+        # values = set(range(1, self.highest_possible(ix, jx)+1))
+        # value = self.get(ix, jx)
+        # values.discard(value)
+        values = {self.get(ix, jx)}
 
         def remove(i, j):
-            values.discard(self.grid[i][j])
-        self._apply_on_neighbours(ix, jx, remove)
-        return not values
+            if self.grid[i][j] in values:
+                return False
+            values.add(self.grid[i][j])
+            return True
+            # values.discard(self.grid[i][j])
+        dups = self._apply_on_neighbours(ix, jx, remove)
+        return False not in dups
 
     def validate_hex(self, ix, jx):
         if not self._no_index_error(ix, jx):
@@ -305,8 +310,10 @@ class HexGrid:
         print("SCORE:", self.score())
         print("-"*40)
         print("DIST: ")
-        for val, count in self.dist().items():
-            print("\t%d: %d" % (val, count))
+        dist = self.dist()
+        max_dist = max(dist.values())
+        for val, count in dist.items():
+            print("\t%d: %5d %s" % (val, count, "*"*int(count*40/max_dist)))
         print("PERFECT:", self.sum_perfect())
         print("SAME NEIGHBOUR:", self.sum_same_neighbour())
         print("-"*40)
