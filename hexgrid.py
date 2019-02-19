@@ -1,8 +1,8 @@
 import random
 import time
 from multiprocessing import Process, Manager, Lock
-
-# pool = Pool(8)
+from itertools import chain as chain
+from collections import Counter
 
 
 class HexGrid:
@@ -134,11 +134,16 @@ class HexGrid:
         return True in self._apply_on_neighbours(ix, jx, check_neigbour)
 
     def check_perfect(self, ix, jx):
-        if ix == 0 or ix == self.height:
+        if ix == 0 or ix == self.height-1:
             if jx == 0 or jx == len(self.grid[ix])-1:
                 values = set(range(1, 5))
             else:
                 values = set(range(1, 6))
+        elif ix == self.height//2:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                values = set(range(1, 5))
+            else:
+                values = set(range(1, 8))
         else:
             if jx == 0 or jx == len(self.grid[ix])-1:
                 values = set(range(1, 6))
@@ -244,7 +249,7 @@ class HexGrid:
                 s += indent*(ix+1)
             for jx, value in enumerate(row):
                 if value == 0:
-                    s += '\033[1;38m'
+                    s += '\033[1;35m'
                 elif not self.validate_hex(ix,  jx):
                     s += '\033[1;31m'
                 elif self.same_neighbour(ix, jx):
@@ -263,7 +268,16 @@ class HexGrid:
         return self.__str__()
 
     def prt(self):
-        return str(self.grid).replace("[", "(").replace("]", ")")[1:-1]
+        return "(" + str(self.grid).replace("[", "(").replace("]", ")")[1:-1] + ")"
+
+    def dist(self):
+        return Counter(chain(*self.grid))
+
+    def sum_perfect(self):
+        return sum([1 for ix, jx in self.index_generator() if self.check_perfect(ix, jx)])
+
+    def sum_same_neighbour(self):
+        return sum([1 for ix, jx in self.index_generator() if self.same_neighbour(ix, jx)])
 
     def test(self, indent=True):
         print("*"*40)
@@ -272,6 +286,13 @@ class HexGrid:
         print("size: ", self.size)
         print("VALID:", self.validate())
         print("SCORE:", self.score())
+        print("-"*40)
+        print("DIST: ")
+        for val, count in self.dist().items():
+            print("\t%d: %d" % (val, count))
+        print("PERFECT:", self.sum_perfect())
+        print("SAME NEIGHBOUR:", self.sum_same_neighbour())
+        print("-"*40)
         print("GRID: ", self.prt())
         print("*"*40)
         return self
@@ -421,13 +442,17 @@ grid = [
     (2, 1, 4, 3),
     (2, 3, 1)
 ]
+grid = [(2, 3), (4, 1, 4), (3, 2)]
+HexGrid.from_grid(grid).test()
 grid = [(4, 3, 4), (1, 2, 1, 2), (2, 3, 7, 4, 3), (4, 5, 6, 1), (1, 2, 3)]
+HexGrid.from_grid(grid).test()
 grid = [(3, 2, 1), (1, 6, 5, 4), (3, 4, 7, 3, 2), (2, 1, 2, 1), (0, 0, 0)]
 HexGrid.from_grid(grid).upsize(value=0).test()
 grid = [(3, 2, 1, 3), (1, 6, 5, 4, 2), (3, 4, 7, 3, 2, 1), (0, 2, 1, 2, 1, 0, 0), (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0), (0, 0, 0, 0)]
 # grid = [(4, 3, 4), (2, 1, 2, 1), (3, 4, 7, 3, 2), (1, 6, 5, 4), (3, 2, 1)]
 HexGrid.from_grid(grid).test()
-# RandomChange.from_order(3)(tries=1000).test()
+
+RandomChange.from_order(4)(tries=100).test()
 
 # from itertools import chain as chain
 # from collections import Counter
