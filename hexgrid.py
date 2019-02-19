@@ -243,7 +243,9 @@ class HexGrid:
             else:
                 s += indent*(ix+1)
             for jx, value in enumerate(row):
-                if not self.validate_hex(ix,  jx):
+                if value == 0:
+                    s += '\033[1;38m'
+                elif not self.validate_hex(ix,  jx):
                     s += '\033[1;31m'
                 elif self.same_neighbour(ix, jx):
                     s += '\033[38;2;243;134;48m'
