@@ -1,31 +1,46 @@
-from multiprocessing import Process, Manager, Lock
-import random
-
-manager = Manager()
-glob = manager.Namespace()
-glob.grid = [1, 2, 3, 4, 5, 6]
-lock = Lock()
-# grid = manager.list([[1, 2, 3], [4, 5, 6]])
-# pool = Pool(4)
+from hexgrid import HexGrid
+import time  # noqa:F401
 
 
-def f(glob, i):
-    x = random.randint(0, 5)
-    new_grid = glob.grid.copy()
-    new_grid[x] = random.randint(0, 50)
-    if sum(new_grid) > sum(glob.grid):
-        lock.acquire()
-        print(i, new_grid)
-        lock.release()
-        glob.grid = new_grid
+# grid = [
+#     (4, 3, 2),
+#     (2, 1, 3, 1),
+#     (3, 1, 5, 2, 4),
+#     (2, 1, 4, 3),
+#     (2, 3, 1)
+# ]
+grid = [(2, 3), (4, 1, 4), (3, 2)]
+HexGrid.from_grid(grid).visualize()
+# grid = [(4, 3, 4), (1, 2, 1, 2), (2, 3, 7, 4, 3), (4, 5, 6, 1), (1, 2, 3)]
+# HexGrid.from_grid(grid).visualize()
+# grid = [(3, 2, 1), (1, 6, 5, 4), (3, 4, 7, 3, 2), (2, 1, 2, 1), (0, 0, 0)]
+# HexGrid.from_grid(grid).upsize(value=0).visualize()
+# grid = [(3, 2, 1, 3), (1, 6, 5, 4, 2), (3, 4, 7, 3, 2, 1), (0, 2, 1, 2, 1, 0, 0), (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0), (0, 0, 0, 0)]
+# HexGrid.from_grid(grid).visualize()
 
+# grid = [(4, 3, 4), (2, 1, 2, 1), (3, 4, 7, 3, 2), (1, 6, 5, 4), (3, 2, 1)]
 
-if __name__ == "__main__":
-
-    # {f(glob) for _ in range(15)}
-
-    # {pool.apply(f, (glob,)) for _ in range(10)}
-    ps = [Process(target=f, args=(glob, i)) for i in range(1000)]
-    [p.start() for p in ps]
-    [p.join() for p in ps]
-    print(glob.grid)
+# grid = [
+#     (4, 3, 4, 0, 0),
+#     (1, 2, 1, 2, 0, 0),
+#     (2, 3, 7, 4, 3, 0, 0),
+#     (0, 4, 5, 6, 1, 0, 0, 0),
+#     (0, 0, 1, 2, 3, 0, 0, 0, 0),
+#     (0, 4, 5, 6, 1, 0, 0, 0),
+#     (2, 3, 7, 4, 3, 0, 0),
+#     (1, 2, 1, 2, 0, 0),
+#     (4, 3, 4, 0, 0),
+# ]
+# HexGrid.from_grid(grid).visualize()
+# grid = [
+#          [1, 4, 3, 4, 1],
+#         [5, 2, 1, 2, 5, 2],
+#       [4, 3, 4, 3, 4, 3, 1],
+#      [1, 2, 1, 2, 1, 2, 5, 4],
+#     [2, 3, 7, 4, 3, 7, 4, 3, 2],
+#      [4, 5, 6, 1, 5, 6, 1, 1],
+#       [1, 2, 3, 4, 2, 3, 4],
+#         [3, 4, 1, 5, 1, 2],
+#          [1, 3, 2, 3, 4],
+# ]
+# HexGrid.from_grid(grid).visualize()
