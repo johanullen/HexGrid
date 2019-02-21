@@ -2,6 +2,7 @@ import random
 from multiprocessing import Process, Manager, Lock
 from itertools import chain as chain
 from collections import Counter
+from functools import reduce
 
 
 class HexGrid:
@@ -112,43 +113,6 @@ class HexGrid:
             r.append(f(ix+1, jx))
         return r
 
-    def same_neighbour(self, ix, jx):
-        value = self.get(ix, jx)
-        if not value:
-            return 0
-
-        def check_neigbour(i, j):
-            return self.get(i, j) == value
-        return sum(self._apply_on_neighbours(ix, jx, check_neigbour, 0))
-
-    def neighbour_with_my_neigbour(self, ix, jx):
-        value = self.get(ix, jx)
-        if not value:
-            return 0
-
-        def check_neigbour_neigbours(i, j):
-            def check_neigbour(ii, jj):
-                return self.get(i, j) == value
-            return sum(self._apply_on_neighbours(ix, jx, check_neigbour, 0))
-        return sum(self._apply_on_neighbours(ix, jx, check_neigbour_neigbours, 0))
-
-    def highest_possible(self, ix, jx):
-        if ix == 0 or ix == self.height-1:
-            if jx == 0 or jx == len(self.grid[ix])-1:
-                return 4
-            else:
-                return 5
-        elif ix == self.height//2:
-            if jx == 0 or jx == len(self.grid[ix])-1:
-                return 4
-            else:
-                return 7
-        else:
-            if jx == 0 or jx == len(self.grid[ix])-1:
-                return 5
-            else:
-                return 7
-
     def check_perfect(self, ix, jx):
         # values = set(range(1, self.highest_possible(ix, jx)+1))
         # value = self.get(ix, jx)
@@ -207,16 +171,89 @@ class HexGrid:
             highest = 1
         return highest
 
-    def sum_neighbours(self, ix, jx):
-        return sum(self._apply_on_neighbours(ix, jx, self.get, 0))
-
-    def score(self):
-        return sum([hex for row in self.grid for hex in row]) - self.size
-
     def has_nonempty_neighbour(self, ix, jx):
         def has_value(i, j):
             return self.get_or_zero(i, j) > 0
         return True in self._apply_on_neighbours(ix, jx, has_value)
+
+    def values_at_dist(self, ix, jx, dist=1):
+        if dist <= 0:
+            return {self.get(ix, jx)}
+
+        def from_neigbours(i, j):
+            return self.values_at_dist(i, j, dist-1)
+        values = self._apply_on_neighbours(ix, jx, from_neigbours, set())
+        values = reduce(lambda a, b: a | b, values)
+        values.add(self.get(ix, jx))
+        return values
+
+    def same_neighbour(self, ix, jx):
+        value = self.get(ix, jx)
+        if not value:
+            return 0
+
+        def check_neigbour(i, j):
+            return self.get(i, j) == value
+        return sum(self._apply_on_neighbours(ix, jx, check_neigbour, 0))
+
+    def neighbour_with_my_neigbour(self, ix, jx):
+        value = self.get(ix, jx)
+        if not value:
+            return 0
+
+        def check_neigbour_neigbours(i, j):
+            def check_neigbour(ii, jj):
+                return self.get(i, j) == value
+            return sum(self._apply_on_neighbours(ix, jx, check_neigbour, 0))
+        return sum(self._apply_on_neighbours(ix, jx, check_neigbour_neigbours, 0))
+
+    def highest_possible(self, ix, jx):
+        if ix == 0 or ix == self.height-1:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                return 4
+            else:
+                return 5
+        elif ix == self.height//2:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                return 4
+            else:
+                return 7
+        else:
+            if jx == 0 or jx == len(self.grid[ix])-1:
+                return 5
+            else:
+                return 7
+
+    def highest_available(self, ix, jx):
+        existing_values = self.available_values_from_neigbours(ix, jx)
+        existing_values = [values for values in existing_values if values]
+        existing_values = sorted(reduce(lambda a,b: a|b, existing_values))[:len(existing_values)]
+        highest_neighbours = max([value for index, value in enumerate(existing_values) if index+1==value] or [1])
+        highest_self = self.highest_possible(ix, jx)
+        highest = min((highest_self, highest_neighbours))
+        return highest
+
+    def empty_neigbours(self, ix, jx):
+        def is_empty(i, j):
+            return not self.grid[i][j]
+        return sum(self._apply_on_neighbours(ix, jx, is_empty))
+
+    def available_values_from_neigbours(self, ix, jx):
+        def available_values(i, j):
+            if self.grid[i][j] > 0:
+                return {self.grid[i][j]}
+            else:
+                return set(range(1, self.highest_possible(i, j)+1))
+        return self._apply_on_neighbours(ix, jx, available_values, set())
+
+    def neigbour_needs(self, ix, jx):
+        def needs(i, j):
+            available = self.values_at_dist(i, j, dist=1)
+            needed = set(range(1, self.grid[i][j]))
+            return needed - available
+        needed = self._apply_on_neighbours(ix, jx, needs, set())
+        needed = reduce(lambda a,b: a|b, needed)
+        return needed
 
     def get(self, ix, jx):
         if ix < 0:
@@ -232,7 +269,7 @@ class HexGrid:
         except IndexError:
             return 0
 
-    def set(self, ix, jx, val):
+    def set_value(self, ix, jx, val):
         if ix < 0:
             raise IndexError("ix < 0")
         elif jx < 0:
@@ -243,13 +280,13 @@ class HexGrid:
 
     def set_or_ignore(self, ix, jx, val):
         try:
-            self.set(ix, jx, val)
+            self.set_value(ix, jx, val)
         except IndexError:
             pass
 
     def set_all(self, val):
         for ix, jx in self.index_generator():
-            self.set(ix, jx, val)
+            self.set_value(ix, jx, val)
         return self
 
     def lower_all(self, value=1):
@@ -264,6 +301,56 @@ class HexGrid:
                 while not self.validate_hex(ix, jx):
                     self.grid[ix][jx] -=1
         return self
+
+    def swap_doublet_neighbour(self, ix, jx):
+        if self.grid[ix][jx] <= 0:
+            return
+        if not self.same_neighbour(ix, jx):
+            return
+        # print("want to swap", ix, jx)
+        swapped = []
+        def swap(i, j):
+            if self.grid[i][j] <= 0:
+                return
+            if swapped:
+                return
+            if self.grid[ix][jx] == self.grid[i][j]:
+                return
+            if not self.same_neighbour(i, j):
+                return
+            # print("swapping", ix, jx, i, j)
+            tmp = self.grid[ix][jx]
+            self.grid[ix][jx] = self.grid[i][j]
+            self.grid[i][j] = tmp
+            # this is probably not needed
+            # if not self.validate_hex(ix, jx) or not self.validate_hex(i, j):
+            #     tmp = self.grid[ix][jx]
+            #     self.grid[ix][jx] = self.grid[i][j]
+            #     self.grid[i][j] = tmp
+            #     return
+
+            swapped.append((i, j))
+        self._apply_on_neighbours(ix, jx, swap)
+        if swapped:
+            return {(ix, jx), swapped[0]}
+        else:
+            return set()
+
+
+    def score(self):
+        return sum([hex for row in self.grid for hex in row]) - self.size
+
+    def sum_perfect(self):
+        return sum([1 for ix, jx in self.index_generator() if self.check_perfect(ix, jx)])
+
+    def sum_same_neighbour(self):
+        return sum([1 for ix, jx in self.index_generator() if self.same_neighbour(ix, jx)])
+
+    def sum_invalid(self):
+        return sum([1 for ix, jx in self.index_generator() if not self.validate_hex(ix, jx)])
+
+    def sum_neighbours(self, ix, jx):
+        return sum(self._apply_on_neighbours(ix, jx, self.get, 0))
 
     def index_generator(self):
         for ix, row in enumerate(self.grid):
@@ -280,11 +367,11 @@ class HexGrid:
             for jx, val in enumerate(row):
                 yield((ix, jx), val)
 
-    def print(self, indent=True):
-        print(self._print(indent))
+    def print(self, indent=True, color=True, mark=None):
+        print(self._print(indent=indent, color=color, mark=mark))
         return self
 
-    def _print(self, indent=True):
+    def _print(self, indent=True, color=True, mark=set()):
         if indent:
             indent = " "
         else:
@@ -297,16 +384,31 @@ class HexGrid:
             else:
                 s += indent*(ix+1)
             for jx, value in enumerate(row):
-                if value == 0:
-                    s += '\033[1;35m'
-                elif not self.validate_hex(ix,  jx):
-                    s += '\033[1;31m'
-                elif self.same_neighbour(ix, jx):
-                    s += '\033[38;2;243;134;48m'
-                elif self.check_perfect(ix, jx):
-                    s += '\033[0;32m'
-                s += " %d" % value
-                s += '\033[0;0m'
+                s += " "
+                if color:
+                    style = []
+
+                    if mark is not None and (ix, jx) in mark:
+                        style.append("3")
+                        style.append("4")
+                        style.append("5")
+                        style.append("6")
+                        style.append("51")
+                    if value == 0:
+                        style.append("1")
+                        style.append("35")
+                    elif not self.validate_hex(ix,  jx):
+                        style.append("31")
+                    elif self.same_neighbour(ix, jx):
+                        style.append("1")
+                        style.append("38;2;255;135;0")
+                    elif self.check_perfect(ix, jx):
+                        style.append("1")
+                        style.append("32")
+                    s += "\033[%sm" % ";".join(style)
+                s += "%d" % value
+                if color:
+                    s += '\033[0;0;0m'
             s += "\n"
         return s
 
@@ -322,19 +424,10 @@ class HexGrid:
     def dist(self):
         return Counter(chain(*self.grid))
 
-    def sum_perfect(self):
-        return sum([1 for ix, jx in self.index_generator() if self.check_perfect(ix, jx)])
-
-    def sum_same_neighbour(self):
-        return sum([1 for ix, jx in self.index_generator() if self.same_neighbour(ix, jx)])
-
-    def sum_invalid(self):
-        return sum([1 for ix, jx in self.index_generator() if not self.validate_hex(ix, jx)])
-
-    def visualize(self, indent=True):
+    def visualize(self, indent=True, color=True, mark=None):
         print("*"*40)
         print("CLASS:", type(self))
-        print(self._print(indent))
+        print(self._print(indent=indent, color=color, mark=mark))
         print("n:    ", self.order)
         print("size: ", self.size)
         print("VALID:", self.validate())
@@ -375,9 +468,9 @@ class HexGrid:
             ix, jx = self._get_random_index()
             highest = self.get_allowed(ix, jx)
             old_val = self.get(ix, jx)
-            self.set(ix, jx, random.randint(1, highest))
+            self.set_value(ix, jx, random.randint(1, highest))
             if not self.validate_local(ix, jx):
-                self.set(ix, jx, old_val)
+                self.set_value(ix, jx, old_val)
         return self
 
     def _random_upgrade(self, upgrades=None):
@@ -386,9 +479,9 @@ class HexGrid:
         for _ in range(upgrades):
             ix, jx = self._get_random_index()
             old_val = self.get(ix, jx)
-            self.set(ix, jx, old_val+1)
+            self.set_value(ix, jx, old_val+1)
             if not self.validate_local(ix, jx):
-                self.set(ix, jx, old_val)
+                self.set_value(ix, jx, old_val)
             self.brute_upgrade()
         return self
 
@@ -427,7 +520,7 @@ class HexGrid:
     def downgrade7(self, to=1):
         for (ix, jx), val in self.generator():
             if val == 7:
-                self.set(ix, jx, to)
+                self.set_value(ix, jx, to)
         return self
 
     def __call__(self):

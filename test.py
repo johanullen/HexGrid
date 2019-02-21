@@ -11,10 +11,10 @@ import time  # noqa:F401
 # ]
 # grid = [(2, 3), (4, 1, 4), (3, 2)]
 # HexGrid.from_grid(grid).visualize()
-# grid = [(4, 3, 4), (1, 2, 1, 2), (2, 3, 7, 4, 3), (4, 5, 6, 1), (1, 2, 3)]
-# HexGrid.from_grid(grid).visualize()
-grid = [(3, 2, 1), (1, 6, 5, 4), (3, 4, 7, 3, 2), (2, 1, 2, 1), (0, 0, 0)]
-HexGrid.from_grid(grid).upsize(value=0).visualize()
+grid = [(4, 3, 4), (1, 2, 1, 2), (2, 3, 7, 4, 3), (4, 5, 6, 1), (1, 2, 3)]
+HexGrid.from_grid(grid).visualize()
+# grid = [(3, 2, 1), (1, 6, 5, 4), (3, 4, 7, 3, 2), (2, 1, 2, 1), (0, 0, 0)]
+# HexGrid.from_grid(grid).upsize(value=0).visualize()
 # grid = [(3, 2, 1, 3), (1, 6, 5, 4, 2), (3, 4, 7, 3, 2, 1), (0, 2, 1, 2, 1, 0, 0), (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0), (0, 0, 0, 0)]
 # HexGrid.from_grid(grid).visualize()
 # HexGrid.from_order(5).visualize()
