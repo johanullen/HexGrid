@@ -4,15 +4,17 @@ from itertools import chain, groupby, starmap
 from collections import Counter
 from functools import reduce
 
+from node import Node
 
 class HexGridBase:
 
-    def __init__(self, grid, order, height, size):
+    def __init__(self, grid, order, height, size, *, NodeType=Node):
         self.order = order
         self.height = height
         self.size = size
         self.grid = [list(row) for row in grid]
-        # self.indices = list(self.index_generator())
+        for (x, y), value in self.generator():
+            self.grid[x][y] = Node(value)
 
     def copy(self):
         new_grid = list()
@@ -61,6 +63,12 @@ class HexGridBase:
         for _, value in self.generator():
             yield value
 
+    def __iter__(self):
+        return self.generator()
+
+    def __len__(self):
+        return self.size
+
     def __eq__(self, other):
         if self.order != other.order:
             return False
@@ -75,32 +83,42 @@ class HexGridBase:
 
 class HexGridManipulate(HexGridBase):
 
-    def _str_from_index_or_slice(self, index):
+    @staticmethod
+    def _str_from_index_or_slice(index):
         if isinstance(index, int):
-            return index
+            return f"{index}"
         elif isinstance(index, slice):
-            start = slice.start
-            stop = slice.stop
-            step = slice.step
+            start = index.start
+            stop = index.stop
+            step = index.step
             if start is None:
                 start = ""
+            else:
+                start = f"{start}"
             if stop is None:
                 stop = ""
+            else:
+                stop = f"{stop}"
             if step is None:
                 step = ""
-            return "{start}:{stop}:{step}"
+            else:
+                step = f"{step}"
+            return f"{start}:{stop}:{step}"
+        else:
+            raise TypeError(f"index must be integer or slice, not {type(index)}")
 
-    def _error_check_index(self, index, height, name, *, prefix="", suffix="", allow_slice=True):
+    @staticmethod
+    def _error_check_index(index, height, *, name="", prefix="", suffix="", allow_slice=True):
         if isinstance(index, int):
             if index < 0:
                 raise IndexError(f"grid[{prefix}{name}{suffix}] index out of range: {index} < 0")
-            if index >= self.height:
-                raise IndexError(f"grid[{prefix}{name}{suffix}] index out of range: {index} >= {self.height}")
+            if index >= height:
+                raise IndexError(f"grid[{prefix}{name}{suffix}] index out of range: {index} >= {height}")
         elif allow_slice and isinstance(index, slice):
-            if index.start < 0:
+            if index.start is not None and index.start < 0:
                 raise IndexError(f"grid[{prefix}{name}.start:] index out of range: {index.start} < 0")
-            if index.stop > self.height:
-                raise IndexError(f"grid[{prefix}:{name}.stop] index out of range: {index.stop} > {self.height}")
+            if index.stop is not None and index.stop > height:
+                raise IndexError(f"grid[{prefix}:{name}.stop] index out of range: {index.stop} > {height}")
             if index.step not in (None, 1):
                 raise IndexError(f"grid[{prefix}::{name}.step] index must be None or 1: {index.step} not in (None, 1)")
         elif allow_slice:
@@ -109,21 +127,21 @@ class HexGridManipulate(HexGridBase):
             raise TypeError(f"grid[{prefix}{name}{suffix}] index must be integer, not {type(index)}")
 
     def _error_check_getitem(self, index):
-        if isinstance(index, int) or isinstance(index, tuple) and len(index)==1:
+        if isinstance(index, (int, slice)) or isinstance(index, tuple) and len(index)==1:
             if isinstance(index, tuple):
                 index = index[0]
-            self._error_check_index(index, self.height, "x")
+            self._error_check_index(index, self.height, name="x")
             return "index", index
         
         if isinstance(index, tuple) and len(index)==2:
             x, y = index
-            self._error_check_index(x, self.height, "x")
+            self._error_check_index(x, self.height, name="x")
             if isinstance(x, int):
                 height = len(self.grid[x])
             else:
-                height = min(map(len, grid[x]))
+                height = min(map(len, self.grid[x]))
             prefix = self._str_from_index_or_slice(x)
-            self._error_check_index(y, height, "y", prefix="{prefix}, ")
+            self._error_check_index(y, height, name="y", prefix="{prefix}, ")
             return "indices", x, y
         
         if isinstance(index, tuple) and len(index) in (3, 4):
@@ -137,9 +155,9 @@ class HexGridManipulate(HexGridBase):
             slice_type = slice_type.lower()
             if slice_type not in ("list", "grid"):
                 raise ValueError(f"slice_type must be either \"list\" or \"grid\", not {slice_type}")
-            self._error_check_index(x, self.height, "x", prefix=slice_type+", ", suffix=", y, [size]", allow_slice=False)
+            self._error_check_index(x, self.height, name="x", prefix=slice_type+", ", suffix=", y, [size]", allow_slice=False)
             height = len(self.grid[x])
-            self._error_check_index(y, self.height, "y", prefix=slice_type+", z, ", suffix=", [size]", allow_slice=False)
+            self._error_check_index(y, self.height, name="y", prefix=slice_type+", z, ", suffix=", [size]", allow_slice=False)
             return slice_type, x, y, size
 
         raise TypeError(f"""
@@ -154,7 +172,12 @@ class HexGridManipulate(HexGridBase):
             return self.grid[x]
         if slice_type == "indices":
             x, y = index[1:]
-            return self.grid[x][y]
+            if isinstance(x, int):
+                return self.grid[x][y]
+            slices = list()
+            for row in self.grid[x]:
+                slices.append(row[y])
+            return slices
         if slice_type in ("list", "grid"):
             x, y, size = index[1:]
             rows = self._apply_at_dist(
@@ -182,7 +205,7 @@ class HexGridManipulate(HexGridBase):
             if slice_type == "grid":
                 return self.from_grid(grid)
 
-    def _apply(self, node, apply_func, default=None):
+    def _apply(self, node, apply_func, *, default=None):
         x, y = node
         def f(_x, _y):
             if self._no_index_error(_x, _y):
@@ -219,7 +242,7 @@ class HexGridManipulate(HexGridBase):
 
         def from_neigbours(x, y):
             return self._apply_at_dist((x, y), apply_func, reduce_func, dist-1)
-        values = self._apply(node, from_neigbours, set())
+        values = self._apply(node, from_neigbours, default=set())
         values.append([apply_func(*node)])
         values = reduce_func(values)
         return values
@@ -322,8 +345,8 @@ class HexGridVisualize(HexGridValidate):
                     # elif self.check_perfect(x, y):
                     #     style.append("1")
                     #     style.append("32")
-                    s += "\033[%sm" % ";".join(style)
-                s += "%d" % value
+                    s += "\033[{}m".format(";".join(style))
+                s += f"{value}"
                 if color:
                     s += '\033[0;0;0m'
             s += "\n"
