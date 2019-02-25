@@ -6,6 +6,7 @@ from functools import reduce
 
 from node import Node
 
+
 class HexGridBase:
 
     def __init__(self, grid, order, height, size, *, NodeType=Node):
@@ -81,6 +82,7 @@ class HexGridBase:
                 return False
         return True
 
+
 class HexGridManipulate(HexGridBase):
 
     @staticmethod
@@ -132,7 +134,7 @@ class HexGridManipulate(HexGridBase):
                 index = index[0]
             self._error_check_index(index, self.height, name="x")
             return "index", index
-        
+
         if isinstance(index, tuple) and len(index)==2:
             x, y = index
             self._error_check_index(x, self.height, name="x")
@@ -143,7 +145,7 @@ class HexGridManipulate(HexGridBase):
             prefix = self._str_from_index_or_slice(x)
             self._error_check_index(y, height, name="y", prefix="{prefix}, ")
             return "indices", x, y
-        
+
         if isinstance(index, tuple) and len(index) in (3, 4):
             if len(index)==3:
                 slice_type, x, y = index
@@ -207,6 +209,7 @@ class HexGridManipulate(HexGridBase):
 
     def _apply(self, node, apply_func, *, default=None):
         x, y = node
+
         def f(_x, _y):
             if self._no_index_error(_x, _y):
                 return apply_func(_x, _y)
@@ -351,6 +354,7 @@ class HexGridVisualize(HexGridValidate):
                     s += '\033[0;0;0m'
             s += "\n"
         return s
+
 
 class HexGrid(HexGridVisualize):
     pass
